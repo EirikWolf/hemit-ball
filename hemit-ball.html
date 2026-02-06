@@ -4,6 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Hemit Ball - Helse & IT Edition</title>
+    
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+    
     <style>
         * {
             margin: 0;
@@ -148,6 +153,171 @@
             background: rgba(100, 100, 100, 0.2);
         }
 
+        .leaderboard-btn {
+            background: rgba(255, 215, 0, 0.2);
+            border: 2px solid #ffd700;
+            border-radius: 8px;
+            padding: 5px 12px;
+            font-size: 18px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-right: 10px;
+        }
+
+        .leaderboard-btn:hover {
+            background: rgba(255, 215, 0, 0.4);
+        }
+
+        .highscore-modal {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: linear-gradient(180deg, #001a33 0%, #002244 100%);
+            border: 3px solid #00b4d8;
+            border-radius: 15px;
+            padding: 30px;
+            z-index: 200;
+            min-width: 350px;
+            max-width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 0 40px rgba(0, 180, 216, 0.5);
+        }
+
+        .highscore-modal.hidden {
+            display: none;
+        }
+
+        .highscore-modal h2 {
+            color: #ffd700;
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 28px;
+            text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+        }
+
+        .highscore-modal h3 {
+            color: #00b4d8;
+            text-align: center;
+            margin-bottom: 15px;
+            font-size: 18px;
+        }
+
+        .score-input {
+            width: 100%;
+            padding: 12px;
+            font-size: 18px;
+            border: 2px solid #00b4d8;
+            border-radius: 8px;
+            background: #001a33;
+            color: white;
+            text-align: center;
+            margin-bottom: 15px;
+            outline: none;
+        }
+
+        .score-input:focus {
+            border-color: #ffd700;
+            box-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
+        }
+
+        .score-input::placeholder {
+            color: #666;
+        }
+
+        .leaderboard {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .leaderboard li {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 15px;
+            margin-bottom: 8px;
+            background: rgba(0, 180, 216, 0.1);
+            border-radius: 8px;
+            border-left: 4px solid #00b4d8;
+        }
+
+        .leaderboard li:nth-child(1) {
+            background: rgba(255, 215, 0, 0.2);
+            border-left-color: #ffd700;
+        }
+
+        .leaderboard li:nth-child(2) {
+            background: rgba(192, 192, 192, 0.2);
+            border-left-color: #c0c0c0;
+        }
+
+        .leaderboard li:nth-child(3) {
+            background: rgba(205, 127, 50, 0.2);
+            border-left-color: #cd7f32;
+        }
+
+        .leaderboard .rank {
+            font-weight: bold;
+            color: #ffd700;
+            min-width: 35px;
+            font-size: 18px;
+        }
+
+        .leaderboard .name {
+            flex: 1;
+            color: white;
+            margin: 0 15px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .leaderboard .score {
+            color: #00b4d8;
+            font-weight: bold;
+            font-size: 18px;
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .modal-buttons .btn {
+            flex: 1;
+            padding: 12px 25px;
+            font-size: 16px;
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, #666, #444) !important;
+        }
+
+        .loading-spinner {
+            text-align: center;
+            color: #00b4d8;
+            padding: 20px;
+        }
+
+        .your-score {
+            text-align: center;
+            font-size: 42px;
+            color: #ffd700;
+            margin: 15px 0;
+            text-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+        }
+
+        .new-record {
+            text-align: center;
+            color: #2a9d8f;
+            font-size: 16px;
+            margin-bottom: 15px;
+            animation: pulse 1s ease-in-out infinite;
+        }
+
         .hidden {
             display: none;
         }
@@ -194,7 +364,10 @@
             <div class="score-display">POENG: <span id="score">0</span></div>
             <div class="level-display">NIVÅ: <span id="level">1</span></div>
             <div class="lives-display">❤️ <span id="lives">3</span></div>
-            <button class="sound-toggle" id="soundToggle" onclick="toggleSound()">🔊</button>
+            <div>
+                <button class="leaderboard-btn" id="leaderboardBtn" onclick="showLeaderboard()">🏆</button>
+                <button class="sound-toggle" id="soundToggle" onclick="toggleSound()">🔊</button>
+            </div>
         </div>
         <canvas id="gameCanvas" width="800" height="600"></canvas>
         
@@ -225,9 +398,114 @@
         </div>
 
         <div class="powerup-indicator" id="powerupIndicator"></div>
+
+        <!-- Highscore Submit Modal -->
+        <div class="highscore-modal hidden" id="submitScoreModal">
+            <h2>🏆 NY HIGHSCORE!</h2>
+            <div class="your-score" id="yourScore">0</div>
+            <div class="new-record" id="newRecordText"></div>
+            <input type="text" class="score-input" id="playerName" placeholder="Skriv inn navnet ditt" maxlength="20" autocomplete="off">
+            <div class="modal-buttons">
+                <button class="btn" onclick="submitScore()">LAGRE</button>
+                <button class="btn btn-secondary" onclick="skipScore()">HOPP OVER</button>
+            </div>
+        </div>
+
+        <!-- Leaderboard Modal -->
+        <div class="highscore-modal hidden" id="leaderboardModal">
+            <h2>🏆 TOPPLISTE</h2>
+            <h3>Globale Highscores</h3>
+            <div id="leaderboardContent">
+                <div class="loading-spinner">Laster...</div>
+            </div>
+            <div class="modal-buttons">
+                <button class="btn" onclick="hideLeaderboard()">LUKK</button>
+            </div>
+        </div>
     </div>
 
     <script>
+        // Firebase Configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyCk7eqFp8T36uC_3MLINTTbfdt8wkmkdUY",
+            authDomain: "hemit-ball.firebaseapp.com",
+            databaseURL: "https://hemit-ball-default-rtdb.europe-west1.firebasedatabase.app",
+            projectId: "hemit-ball",
+            storageBucket: "hemit-ball.firebasestorage.app",
+            messagingSenderId: "1079545142272",
+            appId: "1:1079545142272:web:fe93c176ed26da4e54cce5"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+
+        // Highscore System
+        const HighscoreSystem = {
+            topScores: [],
+            playerBestScore: parseInt(localStorage.getItem('hemitBallBest') || '0'),
+            
+            async loadTopScores() {
+                try {
+                    const snapshot = await database.ref('highscores')
+                        .orderByChild('score')
+                        .limitToLast(10)
+                        .once('value');
+                    
+                    const scores = [];
+                    snapshot.forEach(child => {
+                        scores.push({
+                            id: child.key,
+                            ...child.val()
+                        });
+                    });
+                    
+                    // Sort descending
+                    this.topScores = scores.sort((a, b) => b.score - a.score);
+                    return this.topScores;
+                } catch (error) {
+                    console.error('Error loading scores:', error);
+                    return [];
+                }
+            },
+            
+            async submitScore(name, score, level) {
+                try {
+                    const entry = {
+                        name: name.substring(0, 20),
+                        score: score,
+                        level: level,
+                        timestamp: Date.now()
+                    };
+                    
+                    await database.ref('highscores').push(entry);
+                    
+                    // Update local best
+                    if (score > this.playerBestScore) {
+                        this.playerBestScore = score;
+                        localStorage.setItem('hemitBallBest', score.toString());
+                    }
+                    
+                    return true;
+                } catch (error) {
+                    console.error('Error submitting score:', error);
+                    return false;
+                }
+            },
+            
+            isHighscore(score) {
+                if (this.topScores.length < 10) return true;
+                return score > this.topScores[this.topScores.length - 1].score;
+            },
+            
+            isPersonalBest(score) {
+                return score > this.playerBestScore;
+            }
+        };
+
+        // Load initial scores
+        HighscoreSystem.loadTopScores();
+
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
 
@@ -1397,8 +1675,106 @@
             gameRunning = false;
             cancelAnimationFrame(animationId);
             AudioSystem.gameOver();
+            
             document.getElementById('finalScore').textContent = score;
+            
+            // Check if it's a highscore
+            const isGlobalHighscore = HighscoreSystem.isHighscore(score);
+            const isPersonalBest = HighscoreSystem.isPersonalBest(score);
+            
+            if (score > 0 && (isGlobalHighscore || isPersonalBest)) {
+                // Show submit score modal
+                document.getElementById('yourScore').textContent = score;
+                
+                let recordText = '';
+                if (isGlobalHighscore && isPersonalBest) {
+                    recordText = '🎉 Ny global highscore & personlig rekord!';
+                } else if (isGlobalHighscore) {
+                    recordText = '🌍 Du er på topplisten!';
+                } else if (isPersonalBest) {
+                    recordText = '⭐ Ny personlig rekord!';
+                }
+                document.getElementById('newRecordText').textContent = recordText;
+                
+                // Pre-fill name if saved
+                const savedName = localStorage.getItem('hemitBallName') || '';
+                document.getElementById('playerName').value = savedName;
+                
+                document.getElementById('submitScoreModal').classList.remove('hidden');
+            } else {
+                document.getElementById('gameOverScreen').classList.remove('hidden');
+            }
+        }
+
+        async function submitScore() {
+            const nameInput = document.getElementById('playerName');
+            const name = nameInput.value.trim() || 'Anonym';
+            
+            // Save name for next time
+            localStorage.setItem('hemitBallName', name);
+            
+            // Submit to Firebase
+            const success = await HighscoreSystem.submitScore(name, score, level);
+            
+            if (success) {
+                showPowerupBadge('✅ Score lagret!', '#2a9d8f');
+            }
+            
+            document.getElementById('submitScoreModal').classList.add('hidden');
             document.getElementById('gameOverScreen').classList.remove('hidden');
+            
+            // Reload scores
+            HighscoreSystem.loadTopScores();
+        }
+
+        function skipScore() {
+            document.getElementById('submitScoreModal').classList.add('hidden');
+            document.getElementById('gameOverScreen').classList.remove('hidden');
+        }
+
+        async function showLeaderboard() {
+            const modal = document.getElementById('leaderboardModal');
+            const content = document.getElementById('leaderboardContent');
+            
+            modal.classList.remove('hidden');
+            content.innerHTML = '<div class="loading-spinner">Laster toppliste...</div>';
+            
+            const scores = await HighscoreSystem.loadTopScores();
+            
+            if (scores.length === 0) {
+                content.innerHTML = '<p style="text-align: center; color: #666;">Ingen scores ennå. Bli den første!</p>';
+                return;
+            }
+            
+            let html = '<ul class="leaderboard">';
+            scores.forEach((entry, index) => {
+                const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : '';
+                html += `
+                    <li>
+                        <span class="rank">${medal || (index + 1)}</span>
+                        <span class="name">${escapeHtml(entry.name)}</span>
+                        <span class="score">${entry.score.toLocaleString()}</span>
+                    </li>
+                `;
+            });
+            html += '</ul>';
+            
+            // Add personal best
+            if (HighscoreSystem.playerBestScore > 0) {
+                html += `<p style="text-align: center; color: #ffd700; margin-top: 15px;">⭐ Din beste: ${HighscoreSystem.playerBestScore.toLocaleString()}</p>`;
+            }
+            
+            content.innerHTML = html;
+        }
+
+        function hideLeaderboard() {
+            document.getElementById('leaderboardModal').classList.add('hidden');
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
         }
 
         function toggleSound() {
